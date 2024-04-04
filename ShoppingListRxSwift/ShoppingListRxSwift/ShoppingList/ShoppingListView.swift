@@ -12,7 +12,7 @@ class ShoppingListView: UIView {
 
     let searchFrame = {
         let view = UIView()
-        view.backgroundColor = .lightGray
+        view.backgroundColor = .systemGray6
         view.clipsToBounds = true
         view.layer.cornerRadius = 8
         
@@ -29,7 +29,6 @@ class ShoppingListView: UIView {
         let view = UIButton()
         view.layer.cornerRadius = 4
         view.setTitle("추가", for: .normal)
-        view.backgroundColor = .systemGray3
         
         return view
     }()
@@ -39,20 +38,10 @@ class ShoppingListView: UIView {
             frame: .zero, 
             collectionViewLayout: createLayout()
         )
-        
+
         return view
     }()
-    
-    lazy var tableView = {
-        let view = UITableView()
-        view.rowHeight = 72
-        view.register(
-            ShoppingListViewTableViewCell.self,
-            forCellReuseIdentifier: "ShoppingListViewTableViewCell"
-        )
-        return view
-    }()
-    
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         
@@ -68,7 +57,7 @@ class ShoppingListView: UIView {
     private func configureHierarchy() {
         [
             searchFrame,
-            tableView,
+            collectionView,
         ].forEach { addSubview($0) }
         
         [
@@ -95,8 +84,8 @@ class ShoppingListView: UIView {
             make.centerY.equalToSuperview()
             make.trailing.equalTo(addButton.snp.leading).offset(-12)
         }
-        tableView.snp.makeConstraints { make in
-            make.top.equalTo(searchFrame.snp.bottom).offset(12)
+        collectionView.snp.makeConstraints { make in
+            make.top.equalTo(searchFrame.snp.bottom).offset(20)
             make.horizontalEdges.equalToSuperview().inset(12)
             make.bottom.equalTo(safeAreaLayoutGuide)
         }

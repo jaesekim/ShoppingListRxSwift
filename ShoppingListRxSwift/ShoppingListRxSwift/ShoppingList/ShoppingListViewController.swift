@@ -26,51 +26,46 @@ class ShoppingListViewController: UIViewController {
     
     let disposeBag = DisposeBag()
 
-    
-    var itemList: [ShopModel] = [ShopModel(item: "a")]
     override func viewDidLoad() {
         super.viewDidLoad()
 
         navigationItem.title = "쇼핑"
         bind()
-//        configureDataSource()
-//        updateSnapshot()
+        configureDataSource()
     }
     
     private func bind() {
-        
-        viewModel.outputShoppingItem
-            .asDriver()
-            .drive(mainView.tableView.rx.items(
-                cellIdentifier: "ShoppingListViewTableViewCell",
-                cellType: ShoppingListViewTableViewCell.self)
-            ) { (row, element, cell) in
-                cell.updateUI(element)
-            }
-            .disposed(by: disposeBag)
-        
-        mainView.addButton.rx.tap
-            .bind(to: viewModel.inputAddButtonTap)
-            .disposed(by: disposeBag)
 
-        mainView.textField.rx.text.orEmpty
-            .bind(to: viewModel.inputShoppingItem)
+        let input = ShoppingListViewModel.Input(
+            addButtonTap: mainView.addButton.rx.tap,
+            shoppingItem: mainView.textField.rx.text
+        )
+        
+        let output = viewModel.transforms(input: input)
+
+        output.buttonStatus
+            .drive(mainView.addButton.rx.isEnabled)
             .disposed(by: disposeBag)
         
-        // addButton.isEnable 여부 바인딩
-        viewModel.outputButtonStatus
-            .asDriver()
+        output.buttonStatus
             .drive(with: self) { owner, bool in
-                owner.mainView.addButton.isEnabled = bool
+                let color: UIColor = bool ? .systemPink : .systemGray4
+                let textColor: UIColor = bool ? .white : .lightGray
+                owner.mainView.addButton.backgroundColor = color
+                owner.mainView.addButton.setTitleColor(textColor, for: .normal)
             }
             .disposed(by: disposeBag)
         
+        output.shoppingItems
+            .drive(with: self) { owner, value in
+                owner.updateSnapshot(items: value)
+            }
+            .disposed(by: disposeBag)
     }
 }
 
 extension ShoppingListViewController {
-    
-    // 이거 왜 안 되는거야;
+
     private func configureDataSource() {
         let cellRegistration = UICollectionView.CellRegistration<
             ShoppingListCollectionViewCell, ShopModel
@@ -92,12 +87,12 @@ extension ShoppingListViewController {
             }
         )
     }
-    
-    private func updateSnapshot() {
+
+    private func updateSnapshot(items: [ShopModel]) {
         
         var snapshot = NSDiffableDataSourceSnapshot<Section, ShopModel>()
         snapshot.appendSections(Section.allCases)
-        snapshot.appendItems(viewModel.itemList, toSection: .main)
+        snapshot.appendItems(items, toSection: .main)
 
         dataSource.apply(snapshot)
     }

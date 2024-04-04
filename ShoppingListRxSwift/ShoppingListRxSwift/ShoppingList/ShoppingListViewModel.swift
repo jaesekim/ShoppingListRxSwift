@@ -10,47 +10,66 @@ import RxSwift
 import RxCocoa
 
 final class ShoppingListViewModel {
-    
-    let inputAddButtonTap = PublishSubject<Void>()
-    let inputShoppingItem = PublishSubject<String>()
-    
-    var itemList: [ShopModel] = []
-    
-    lazy var outputShoppingItem = BehaviorRelay(value: itemList)
-    let outputButtonStatus = BehaviorRelay(value: false)
-    
-    let disposeBag = DisposeBag()
 
-    init() {
+    var itemList: [ShopModel] = []
+
+    let disposeBag = DisposeBag()
+    
+    struct Input {
         
-        inputAddButtonTap
-            .withLatestFrom(inputShoppingItem)
+        let addButtonTap: ControlEvent<Void>
+        let shoppingItem: ControlProperty<String?>
+    }
+
+    struct Output {
+
+        let buttonStatus: Driver<Bool>
+        let shoppingItems: Driver<[ShopModel]>
+    }
+}
+
+extension ShoppingListViewModel {
+
+    func transforms(input: Input) -> Output {
+        
+        let shopping = PublishRelay<[ShopModel]>()
+        
+        input.addButtonTap
+            .withLatestFrom(input.shoppingItem.orEmpty)
             .distinctUntilChanged()
             .bind(with: self) { owner, item in
-                print("click")
-                print(item)
-                owner.itemList.append(ShopModel(item: item))
-                owner.outputShoppingItem.accept(owner.itemList)
+                owner.itemList.append(
+                    ShopModel(item: item)
+                )
+                shopping.accept(owner.itemList)
             }
             .disposed(by: disposeBag)
-        
-        inputShoppingItem
+
+        let buttonStatus = input.shoppingItem
+            .orEmpty
             .map { !$0.isEmpty }
-            .bind(with: self) { owner, bool in
-                owner.outputButtonStatus.accept(bool)
-            }
-            .disposed(by: disposeBag)
-        
-        inputShoppingItem
+            .asDriver(onErrorJustReturn: false)
+            
+        input.shoppingItem
+            .orEmpty
             .debounce(.seconds(1), scheduler: MainScheduler.instance)
             .distinctUntilChanged()
-            .bind(with: self) { owner, text in
-                let result = text.isEmpty ? 
-                owner.itemList : owner.itemList.filter { $0.item.contains(text) }
-                owner.outputShoppingItem.accept(result)
+            .bind(with: self) { owner, item in
+                
+                let result = item.isEmpty ?
+                owner.itemList : owner.itemList.filter {
+                    $0.item.contains(item)
+                }
+                shopping.accept(result)
             }
             .disposed(by: disposeBag)
         
+        let shoppingResult = shopping
+            .asDriver(onErrorJustReturn: [])
         
+        return Output(
+            buttonStatus: buttonStatus,
+            shoppingItems: shoppingResult
+        )
     }
 }
